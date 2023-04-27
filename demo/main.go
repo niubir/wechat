@@ -31,7 +31,7 @@ func init() {
 		port = "80"
 	}
 
-	oauth2Redirect = fmt.Sprintf("%s:%s/oauth2/callback", domain, port)
+	oauth2Redirect = fmt.Sprintf("%s/oauth2/callback", domain)
 
 	w = wechat.NewWechat(appid, appsecret, token)
 }
