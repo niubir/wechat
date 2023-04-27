@@ -61,8 +61,8 @@ func wechatConfigureHandler(resp http.ResponseWriter, req *http.Request) {
 }
 
 func wechatOAuth2Handler(resp http.ResponseWriter, req *http.Request) {
-	// url, err := w.GetOAuthURL(oauth2Redirect, "This_is_test_state", true)
-	url, err := w.GetOAuthURL(oauth2Redirect, "This_is_test_state")
+	// url, err := w.GetOAuthURL(oauth2Redirect, "ThisIsTestState", true)
+	url, err := w.GetOAuthURL(oauth2Redirect, "ThisIsTestState")
 	if err != nil {
 		failed(resp, err)
 		return
