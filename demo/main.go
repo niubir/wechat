@@ -42,7 +42,7 @@ func main() {
 	http.HandleFunc("/oauth2", wechatOAuth2Handler)
 	http.HandleFunc("/oauth2/callback", wechatOAuth2CallbackHandler)
 
-	if err := http.ListenAndServe(":", nil); err != nil {
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		panic(err)
 	}
 }
