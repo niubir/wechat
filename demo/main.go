@@ -10,14 +10,29 @@ import (
 )
 
 var (
-	w              *wechat.Wechat
-	appid          = os.Getenv("APPID")
-	appsecret      = os.Getenv("APPSECRET")
-	token          = os.Getenv("TOKEN")
-	oauth2Redirect = os.Getenv("OAUTHDOMAIN") + "/oauth2/callback"
+	w         *wechat.Wechat
+	appid     string
+	appsecret string
+	token     string
+	domain    string
+	port      string
+
+	oauth2Redirect string
 )
 
 func init() {
+	appid = os.Getenv("APPID")
+	appsecret = os.Getenv("APPSECRET")
+	token = os.Getenv("TOKEN")
+	domain = os.Getenv("DOMAIN")
+	port = os.Getenv("PORT")
+
+	if port == "" {
+		port = "80"
+	}
+
+	oauth2Redirect = fmt.Sprintf("%s:%s/oauth2/callback", domain, port)
+
 	w = wechat.NewWechat(appid, appsecret, token)
 }
 
@@ -27,17 +42,16 @@ func main() {
 	http.HandleFunc("/oauth2", wechatOAuth2Handler)
 	http.HandleFunc("/oauth2/callback", wechatOAuth2CallbackHandler)
 
-	if err := http.ListenAndServe(":10001", nil); err != nil {
+	if err := http.ListenAndServe(":", nil); err != nil {
 		panic(err)
 	}
 }
 
 func indexHandler(resp http.ResponseWriter, req *http.Request) {
-	success(resp, []byte("Wellcome 10001!"))
+	success(resp, []byte("Wellcome!"))
 }
 
 func wechatConfigureHandler(resp http.ResponseWriter, req *http.Request) {
-	fmt.Println("wechatConfigureHandler1")
 	echostr, err := w.Configure(req)
 	if err != nil {
 		failed(resp, err)
@@ -47,39 +61,41 @@ func wechatConfigureHandler(resp http.ResponseWriter, req *http.Request) {
 }
 
 func wechatOAuth2Handler(resp http.ResponseWriter, req *http.Request) {
-	fmt.Println("wechatOAuth2Handler1")
-	url, err := w.OAuth2(oauth2Redirect, wechat.ScopeUserInfo, "")
-	// url, err := w.OAuth2(oauth2Redirect, wechat.ScopeBase, "")
+	// url, err := w.GetOAuthURL(oauth2Redirect, "", true)
+	url, err := w.GetOAuthURL(oauth2Redirect, "This is test state")
 	if err != nil {
 		failed(resp, err)
 		return
 	}
-	fmt.Printf("url: %s\n", url)
-	successJSON(resp, url)
-	// redirect(resp, req, url)
+	redirect(resp, req, url)
 }
 
 func wechatOAuth2CallbackHandler(resp http.ResponseWriter, req *http.Request) {
-	fmt.Println("wechatOAuth2CallbackHandler1")
-	code, err := w.GetOAuth2Code(req)
+	code, err := w.ParseOAuthCode(req)
 	if err != nil {
 		failed(resp, err)
 		return
 	}
-	fmt.Printf("code: %+v\n", code)
-	accessToken, err := w.GetOAuth2AccessToken(code.Code)
+	accessToken, err := w.GetOAuthAccessToken(code.Code)
 	if err != nil {
 		failed(resp, err)
 		return
 	}
-	fmt.Printf("accessToken: %+v\n", accessToken)
-	user, err := w.GetOAuth2User(*accessToken, wechat.LangZH_TW)
-	if err != nil {
-		failed(resp, err)
-		return
+
+	data := map[string]interface{}{
+		"accessToken": accessToken,
 	}
-	fmt.Printf("user: %+v\n", user)
-	successJSON(resp, user)
+
+	if accessToken.ContainScopeUserinfo() {
+		user, err := w.GetOAuthUserByAccessToken(*accessToken)
+		if err != nil {
+			failed(resp, err)
+			return
+		}
+		data["user"] = *user
+	}
+
+	successJSON(resp, data)
 }
 
 func failed(resp http.ResponseWriter, err error) {
